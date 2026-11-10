@@ -9,7 +9,6 @@
 Projet Annuel:
 
 
-
 Il existe déjà un chatbot destiné aux sapeurs-pompiers. Il s'appuie sur des modèles de langage **distants**, donc sur des serveurs accessibles par internet.
 
 Sur le terrain, un agent a besoin d'un outil qui :
