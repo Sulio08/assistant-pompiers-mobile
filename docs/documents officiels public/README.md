@@ -8,4 +8,6 @@ Les Documents officiels publics ne sont pas sur le dépot en ligne dû aux poids
 - **GDO** : [Guides de doctrine opérationnelle](https://mobile.interieur.gouv.fr/Le-ministere/Securite-civile/Documentation-technique/Les-sapeurs-pompiers/Doctrines-et-techniques-professionnelles/Guide-de-doctrine-operationnelle)
 - **GTO** : [Guides de techniques opérationnelles](https://www.interieur.gouv.fr/Le-ministere/Securite-civile/Documentation-technique/Les-sapeurs-pompiers/Doctrines-et-techniques-professionnelles/Guides-de-techniques-operationnelles)
 
-![PDF des documents officiels](../captures/Elements%20supplementaires/Pdf%20documents.png)
+
+## En local
+![PDF des documents officiels](../captures/Elements_20supplementaires/Pdf_20documents.png)
