@@ -1,8 +1,23 @@
 import os
 import time
+import json
 import requests
 
-MODELE = "qwen3:1.7b"
+
+def moyenne(liste):
+    return sum(liste) / len(liste)
+
+
+def mediane(liste):
+    triee = sorted(liste)
+    n = len(triee)
+    milieu = n // 2
+    if n % 2 == 1:
+        return triee[milieu]
+    else:
+        return (triee[milieu - 1] + triee[milieu]) / 2
+
+MODELE = "mistral:7b"
 
 QUESTIONS = [
     "Quels sont les signes d'un arrêt cardiaque chez un être humain adulte ?",
@@ -48,47 +63,94 @@ QUESTIONS = [
 ]
 
 
+URL = "http://127.0.0.1:11434/api/generate"
 
-URL = "http://localhost:11434/api/generate"
-
-FICHIER = "bench/csv/resultatsqwen17b.csv"
+FICHIER = "bench/csv/resultatsmistral7b.csv"
 
 if not os.path.exists(FICHIER):
     f = open(FICHIER, "w", encoding="utf-8")
-    f.write("modele;question;temps_total_s;temps_premier_mot_s;nb_tokens;vitesse_tokens_s\n")
+    f.write("modeleIA;question;temps_total;temps_premier_mot;nb_tokens_utilisés;vitesse_tokens;reponse\n")
     f.close()
+
+liste_temps_total = []
+liste_premier_mot = []
+liste_nb_tokens = []
+liste_vitesse = []
 
 for question in QUESTIONS:
     print("Question :", question)
 
+
     demande = {
         "model": MODELE,
         "prompt": question,
-        "stream": False,
+        "stream": True,
     }
+
     if "qwen3" in MODELE:
         demande["think"] = False
 
+
     debut = time.time()
-    reponse = requests.post(URL, json=demande)
+    reponse = requests.post(URL, json=demande, stream=True)
+
+    texte = ""
+    temps_premier_mot = None
+
+    for ligne in reponse.iter_lines():
+        morceau = json.loads(ligne)
+
+        if temps_premier_mot is None and morceau["response"] != "":
+            temps_premier_mot = time.time() - debut
+
+        texte = texte + morceau["response"]
+
+        if morceau["done"]:
+            donnees = morceau
+
     fin = time.time()
 
-    donnees = reponse.json()
-
     temps_total = fin - debut
-    temps_premier_mot = (donnees["load_duration"] + donnees["prompt_eval_duration"]) / 1000000000
     nb_tokens = donnees["eval_count"]
     vitesse = nb_tokens / (donnees["eval_duration"] / 1000000000)
 
-    print("Réponse :", donnees["response"][:200], "...")
+    print("Réponse :", texte[:200], "...")
     print("Temps total :", round(temps_total, 2), "s")
     print("Temps avant le premier mot :", round(temps_premier_mot, 2), "s")
     print("Vitesse :", round(vitesse, 1), "tokens/s")
     print("-----")
 
+    reponse_propre = texte.replace(";", ",").replace("\n", " ")
+
     f = open(FICHIER, "a", encoding="utf-8")
-    f.write(MODELE + ";" + question + ";" + str(round(temps_total, 2)) + ";" + str(round(temps_premier_mot, 2)) + ";" + str(nb_tokens) + ";" + str(round(vitesse, 1)) + "\n")
+    f.write(MODELE + ";" + question + ";" + str(round(temps_total, 2)) + ";" + str(round(temps_premier_mot, 2)) + ";" + str(nb_tokens) + ";" + str(round(vitesse, 1)) + ";" + reponse_propre + "\n")
     f.close()
 
+    liste_temps_total.append(temps_total)
+    liste_premier_mot.append(temps_premier_mot)
+    liste_nb_tokens.append(nb_tokens)
+    liste_vitesse.append(vitesse)
 
-    
+moy_total = moyenne(liste_temps_total)
+moy_premier_mot = moyenne(liste_premier_mot)
+moy_tokens = moyenne(liste_nb_tokens)
+moy_vitesse = moyenne(liste_vitesse)
+
+med_total = mediane(liste_temps_total)
+med_premier_mot = mediane(liste_premier_mot)
+med_tokens = mediane(liste_nb_tokens)
+med_vitesse = mediane(liste_vitesse)
+
+print("===== RÉSUMÉ", MODELE, "sur", len(QUESTIONS), "questions =====")
+print("Temps total     : moyenne", round(moy_total, 2), "s | médiane", round(med_total, 2), "s")
+print("Premier mot     : moyenne", round(moy_premier_mot, 2), "s | médiane", round(med_premier_mot, 2), "s")
+print("Nombre de tokens: moyenne", round(moy_tokens), "| médiane", round(med_tokens))
+print("Vitesse         : moyenne", round(moy_vitesse, 1), "tokens/s | médiane", round(med_vitesse, 1), "tokens/s")
+
+f = open(FICHIER, "a", encoding="utf-8")
+f.write(MODELE + ";MOYENNE;" + str(round(moy_total, 2)) + ";" + str(round(moy_premier_mot, 2)) + ";" + str(round(moy_tokens)) + ";" + str(round(moy_vitesse, 1)) + "\n")
+f.write(MODELE + ";MEDIANE;" + str(round(med_total, 2)) + ";" + str(round(med_premier_mot, 2)) + ";" + str(round(med_tokens)) + ";" + str(round(med_vitesse, 1)) + "\n")
+f.close()
+
+
+
